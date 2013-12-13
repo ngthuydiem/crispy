@@ -16,7 +16,7 @@ using namespace std;
 
 #define BUF_SIZE 				8192
 #define EPSILON 				0.00001
-#define MAX_NUM_EDGES		 	134217728
+#define UPPER_BOUND_NUM_EDGES 	200000000
 #define INVALID_ID 				1000000000
 	
 struct DistPair
@@ -30,6 +30,15 @@ struct DistPair
 	}
 }; // end of struct DistPair
 
+struct Link {
+	unsigned int numEdges;
+	float sumEdges;	
+	Link() {
+		numEdges = 0;
+		sumEdges = 0.0f;
+	}	
+};
+
 struct TreeNode {
 	unsigned int ID;
 	TreeNode* topParent;
@@ -38,7 +47,7 @@ struct TreeNode {
 	TreeNode* right;	
 	float dist;
 	unsigned int numMembers;
-	unordered_map<unsigned int, unsigned int> linkMap;	
+	unordered_map<unsigned int, Link> linkMap;	
 	
 	TreeNode () {
 		ID=INVALID_ID;
@@ -62,7 +71,7 @@ struct TreeNode {
 	}	
 }; // end of struct TreeNode
 
-typedef unordered_map<unsigned int, unsigned int> LinkMap;
+typedef unordered_map<unsigned int, Link> LinkMap;
 typedef LinkMap::iterator LinkMapIter;
 
 typedef unordered_set<TreeNode*> NodeSet;
@@ -80,6 +89,12 @@ unsigned int newId;
 unsigned long long totalNumEdges = 0, totalUnlinked = 0;
 
 vector<TreeNode*> vActiveNodes;
+vector<TreeNode*> vExactNodes;
+vector<float> vExactDist;	
+vector<float> vInexactDist;
+
+bool allLoaded = false;
+float lambda = 0.0f;
 
 void help()
 {
@@ -89,7 +104,7 @@ void help()
 	cout<<"-h help description."<<endl;
 }
 
-void getOptions(int argc, char** argv, string &inFileName, int &numReads, int &numFiles, float &endLevel)
+void getOptions(int argc, char** argv, string &inFileName, int &numReads, int &numFiles, float &endLevel, string &outFileName)
 {   
 	numReads = 0;
 	numFiles = 0;
@@ -102,10 +117,13 @@ void getOptions(int argc, char** argv, string &inFileName, int &numReads, int &n
 		}	
 		if(strcmp("-f",argv[i])==0) {		
 			numFiles=atoi(argv[i+1]);
-		}	
+		}
 		if(strcmp("-e",argv[i])==0) {		
 			endLevel=atof(argv[i+1]);
 		}	
+		if(strcmp("-o",argv[i])==0) {		
+			outFileName.assign(argv[i+1]);
+		}
 		if(strcmp("-h",argv[i])==0)
 		{   
 			help();
@@ -120,12 +138,12 @@ void getOptions(int argc, char** argv, string &inFileName, int &numReads, int &n
 	}
 }
 
-void getDistNameList(string inFileName, vector<string> &pairNameVector, vector<string>& distNameVector, int numFiles)
+void getDistNameList(string inFileName, vector<string> &pairNameVector, vector<string>& distNameVector, unsigned int numFiles)
 {   
 	string tempStr;
 	char buf[1000];
 
-	for (int fileId=0; fileId<numFiles; fileId++) {
+	for (unsigned int fileId=0; fileId<numFiles; fileId++) {
 		sprintf(buf, "_%d", fileId);
 
 		tempStr = inFileName;
@@ -228,7 +246,8 @@ void emptyTree(NodeSet roots)
 }
 
 int printClusters(NodeSet roots, IDList orphanNodes,
-	string clusterListName, string clusterName, float endLevel)
+	string clusterListName, string clusterName, 
+	float endLevel)
 {   
 	TreeNode *tempNode = 0;
 	NodeSetIter setIter;
@@ -251,9 +270,9 @@ int printClusters(NodeSet roots, IDList orphanNodes,
 	}
 	printf("\n");
 
+	float distLevel = endLevel;
 	// for each distance level
-	float stepSize = endLevel/5;
-	for(float distLevel=stepSize; distLevel<endLevel || fabs(distLevel-endLevel) < EPSILON; distLevel+=stepSize)
+	//for(float distLevel=stepSize; distLevel<endLevel || fabs(distLevel-endLevel) < EPSILON; distLevel+=stepSize)
 	{   
 		numOTUs = 0;
 		nodeList.clear();
@@ -291,8 +310,8 @@ int printClusters(NodeSet roots, IDList orphanNodes,
 			tempList.clear();
 		}
 
-		fprintf(clusterListFile," %.2f ", distLevel);
-		fprintf(clusterFile," %.2f ", distLevel);
+		fprintf(clusterListFile," %.3f ", distLevel);
+		fprintf(clusterFile," %.3f ", distLevel);
 		
 		// write the nodeList to file
 		tempList.clear();
@@ -341,7 +360,7 @@ int printClusters(NodeSet roots, IDList orphanNodes,
 		numOTUs += orphanNodes.size();
 		fprintf(clusterFile,"|\n");
 		fprintf(clusterListFile, "\n");		
-		printf("Dist: %.2f. numOTUs: %u. numSingletons: %lu\n", distLevel, numOTUs, orphanNodes.size());
+		printf("Dist: %.3f. numOTUs: %u. numSingletons: %lu\n", distLevel, numOTUs, orphanNodes.size());
 	}
 	
 	printf("\n");
@@ -373,11 +392,72 @@ void updateTopParent(TreeNode* &aNode, TreeNode* &parentNode) {
 	updateTopParent(aNode->right, parentNode);
 }
 
-void addNode(TreeNode* &nodeX, TreeNode* &nodeY, TreeNode* &parentNode, float newDist)
+// idX > idY
+float computeDist(TreeNode* nodeX, TreeNode* nodeY, float endLevel) {
+
+	float dist = 1.0f;
+	unsigned int totalLinks, numUnlinked;
+	float sumEdges;
+	
+	unsigned int idX = nodeX->ID;
+	unsigned int idY = nodeY->ID;
+
+	if (nodeX->linkMap.find(idY) != nodeX->linkMap.end()) {
+		totalLinks = nodeX->numMembers * nodeY->numMembers;
+		sumEdges = nodeX->linkMap[idY].sumEdges;
+		numUnlinked = totalLinks - nodeX->linkMap[idY].numEdges;
+
+		if (numUnlinked == 0 || allLoaded) {
+			dist = (sumEdges + endLevel*numUnlinked) / totalLinks;
+			if (dist < vExactDist[idX]) {
+				vExactDist[idX] = dist;
+				vExactNodes[idX] = nodeY;
+			}
+		}		
+		else {
+			dist = (sumEdges + lambda*numUnlinked) / totalLinks;
+			if (dist < vInexactDist[idX]) 
+				vInexactDist[idX] = dist;									
+		}		
+	} 				
+
+	return dist;		
+}
+
+void updateMin(TreeNode* nodeX, float endLevel) {
+	
+	TreeNode *tempNode;	
+	unsigned int tempId;
+	vector<TreeNode*>::iterator iter;
+	LinkMap::iterator mapIter;
+
+	vExactDist[nodeX->ID] = 1.0f;
+	
+	if (nodeX != 0 && !nodeX->linkMap.empty()) 
+	{
+		for (mapIter = nodeX->linkMap.begin(); mapIter != nodeX->linkMap.end(); ++mapIter) 
+		{
+			tempId = mapIter->first;
+			tempNode = vActiveNodes[tempId];
+			
+			if (nodeX->ID > tempId)	
+				computeDist(nodeX, tempNode, endLevel);												
+			else
+				computeDist(tempNode, nodeX, endLevel);												
+		}
+	}
+}
+
+
+// idX > idY
+void addNode(TreeNode* &nodeX, TreeNode* &nodeY, TreeNode* &parentNode, float newDist, float endLevel)
 {   
 	TreeNode *tempNode;
-	unsigned int tempId;
+	unsigned int tempId, idX, idY;
 	LinkMapIter mapIter;
+	
+	idX = nodeX->ID;
+	idY = nodeY->ID;
 	
 	// set child nodes for the parent TreeNode
 	parentNode->left=nodeX;
@@ -389,14 +469,13 @@ void addNode(TreeNode* &nodeX, TreeNode* &nodeY, TreeNode* &parentNode, float ne
 	
 	updateTopParent(nodeX, parentNode);
 	updateTopParent(nodeY, parentNode);
-	
+
 	// set dist between two child nodes
 	parentNode->dist=newDist;
 	parentNode->numMembers = nodeX->numMembers + nodeY->numMembers;
 	
 	// pass the link map of nodeX to the parentNode	
-	nodeX->linkMap.erase(nodeY->ID);	
-	nodeY->linkMap.erase(nodeX->ID);
+	nodeX->linkMap.erase(idY);	
 
 	--totalNumEdges;
 
@@ -405,46 +484,93 @@ void addNode(TreeNode* &nodeX, TreeNode* &nodeY, TreeNode* &parentNode, float ne
 	// for each item in the link map of nodeY
 	for(mapIter = nodeY->linkMap.begin(); mapIter != nodeY->linkMap.end(); ++mapIter) {
 		tempId = mapIter->first;
-		parentNode->linkMap[tempId] += mapIter->second;		
-	}			
-
-	totalNumEdges = totalNumEdges + parentNode->linkMap.size() - (nodeX->linkMap.size() + nodeY->linkMap.size());
+		parentNode->linkMap[tempId].numEdges += mapIter->second.numEdges;		
+		parentNode->linkMap[tempId].sumEdges += mapIter->second.sumEdges;															
+	}				
 	
 	nodeX->linkMap.clear();
-	nodeY->linkMap.clear();
+	nodeY->linkMap.clear();				
+	totalNumEdges = totalNumEdges - (nodeX->linkMap.size() + nodeY->linkMap.size());	
+
+
+	// for nodes with larger ID than nodeY that hold the links to nodeY
+	for(unsigned int i = idY + 1; i < idX; ++i)
+	{
+		tempNode = vActiveNodes[i];			
+		if (tempNode && (tempNode->linkMap.find(idY) != tempNode->linkMap.end())) {
+			parentNode->linkMap[i].sumEdges += tempNode->linkMap[idY].sumEdges;
+			parentNode->linkMap[i].numEdges += tempNode->linkMap[idY].numEdges;
+			
+			tempNode->linkMap.erase(idY);	
+			--totalNumEdges;										
+		}
+	}	
+				
+	// for nodes with larger ID than nodeX that hold the links to nodeX
+	for(unsigned int i = idX + 1; i < newId; ++i)
+	{
+		tempNode = vActiveNodes[i];		
+		if (tempNode) {
+					
+			if (tempNode->linkMap.find(idX) != tempNode->linkMap.end()) {
+				parentNode->linkMap[i].sumEdges += tempNode->linkMap[idX].sumEdges;
+				parentNode->linkMap[i].numEdges += tempNode->linkMap[idX].numEdges;
+			
+				tempNode->linkMap.erase(idX);	
+				--totalNumEdges;																	
+			}
+				
+			if (tempNode->linkMap.find(idY) != tempNode->linkMap.end()) {
+				parentNode->linkMap[i].sumEdges += tempNode->linkMap[idY].sumEdges;
+				parentNode->linkMap[i].numEdges += tempNode->linkMap[idY].numEdges;
+			
+				tempNode->linkMap.erase(idY);	
+				--totalNumEdges;					
+			}
+		}
+	}				
 	
-	vActiveNodes[nodeX->ID] = vActiveNodes[nodeY->ID] = 0;
-		
+	totalNumEdges = totalNumEdges + parentNode->linkMap.size();
+	
+	vActiveNodes[idX] = vActiveNodes[idY] = 0;
+	vExactNodes[idX] = vExactNodes[idY] = 0;
+	vExactDist[idX] = vExactDist[idY] = 1.0f;
+	vInexactDist[idX] = vInexactDist[idY] = 1.0f;
+	
 	for(mapIter = parentNode->linkMap.begin(); mapIter != parentNode->linkMap.end(); ++mapIter) {
 		tempId = mapIter->first;	
 		tempNode = vActiveNodes[tempId];		
-									
-		tempNode->linkMap.erase(nodeX->ID);
-		tempNode->linkMap.erase(nodeY->ID);
-				
-		tempNode->linkMap[parentNode->ID] = parentNode->linkMap[tempId];											
-	}	
+
+		computeDist(parentNode, tempNode, endLevel);													
+		
+		if (vExactNodes[tempId] == nodeX || vExactNodes[tempId] == nodeY) {
+			//cout << "update node " << tempNode->ID << endl;
+			updateMin(tempNode, endLevel);									
+		}							
+	}		
 }	
 
 // merge two clusters
-void merge(TreeNode * nodeX, TreeNode * nodeY, float dist, FILE* mergeFile)
+void merge(TreeNode * nodeX, TreeNode * nodeY, float dist, float endLevel)
 {   
 	TreeNode *parentNode=NULL;	
 	LinkMapIter mapIter;
 	
 	parentNode = new TreeNode(newId);	
-	vActiveNodes[newId] = parentNode;		
-	addNode(nodeX, nodeY, parentNode, dist);	
+	vActiveNodes[newId] = parentNode;	
+	
+	if (nodeX->ID > nodeY->ID)	
+		addNode(nodeX, nodeY, parentNode, dist, endLevel);	
+	else
+		addNode(nodeY, nodeX, parentNode, dist, endLevel);	
 	
 	// DEBUG
 	//cout << totalNumEdges << "\t" << dist << "\t" << nodeX->ID << "\t" << nodeY->ID << "\t" << parentNode->ID << "\r";		
-	fprintf(mergeFile, "%d %d %.6f\n", nodeX->ID+1, nodeY->ID+1, dist);		
 	++ newId;	
 }
 
-
 // absorb a TreeNode
-void absorb(unsigned int anIdX, unsigned int anIdY, float dist, FILE* mergeFile)
+void absorb(unsigned int anIdX, unsigned int anIdY, float dist)
 {   
 	TreeNode *nodeX, *nodeY;
 	unsigned int idX, idY;
@@ -455,22 +581,26 @@ void absorb(unsigned int anIdX, unsigned int anIdY, float dist, FILE* mergeFile)
 	idX = nodeX->ID;
 	idY = nodeY->ID;		
 	
-	if (idX != idY) {		
+	if (idX > idY) {		
 		
-		if (nodeX->linkMap.find(idY) == nodeX->linkMap.end()) {
+		if (nodeX->linkMap.find(idY) == nodeX->linkMap.end()) 
 			++totalNumEdges;
-			nodeX->linkMap[idY] = 1;			
-		} else {
-			++nodeX->linkMap[idY];			
-		}
-		nodeY->linkMap[idX] = nodeX->linkMap[idY];		
-		
-		if (nodeX->linkMap[idY] == nodeX->numMembers * nodeY->numMembers)
-			merge(nodeX, nodeY, dist, mergeFile);
+			
+		nodeX->linkMap[idY].sumEdges += dist;
+		++nodeX->linkMap[idY].numEdges;					
 	} 
+	
+	else if (idY > idX) {
+	
+		if (nodeY->linkMap.find(idX) == nodeY->linkMap.end()) 
+			++totalNumEdges;
+			
+		nodeY->linkMap[idX].sumEdges += dist;
+		++nodeY->linkMap[idX].numEdges;							
+	}
 }
 
-void lookAhead(unsigned int anIdX, unsigned int anIdY, float dist, FILE* mergeFile)
+void lookAhead(unsigned int anIdX, unsigned int anIdY, float dist)
 {   
 	TreeNode *nodeX, *nodeY;
 	unsigned int idX, idY;
@@ -481,29 +611,65 @@ void lookAhead(unsigned int anIdX, unsigned int anIdY, float dist, FILE* mergeFi
 	idX = nodeX->ID;
 	idY = nodeY->ID;		
 
-	if (idX != idY) {		
+	if (idX > idY) {		
+	
 		if (nodeX->linkMap.find(idY) == nodeX->linkMap.end()) {
 			++totalUnlinked;
 		}
 		else {
-			++ nodeX->linkMap[idY];				
-			nodeY->linkMap[idX] = nodeX->linkMap[idY];
-			
-			if (nodeX->linkMap[idY] == nodeX->numMembers * nodeY->numMembers)
-				merge(nodeX, nodeY, dist, mergeFile);
+			nodeX->linkMap[idY].sumEdges += dist;
+			++ nodeX->linkMap[idY].numEdges;				
 		}
-	} 
+		
+	} else if (idY > idX) {
+	
+		if (nodeY->linkMap.find(idX) == nodeY->linkMap.end()) {
+			++totalUnlinked;
+		}
+		else {
+			nodeY->linkMap[idX].sumEdges += dist;
+			++ nodeY->linkMap[idX].numEdges;				
+		}
+	
+	}
+}
+
+void updateAllMin(float endLevel) {
+	
+	TreeNode *nodeX, *nodeY;	
+	unsigned int tempId;
+	vector<TreeNode*>::iterator iter;
+	LinkMap::iterator mapIter;
+
+	//cout << "update all min..." << endl;
+	fill(vExactDist.begin(), vExactDist.end(), 1.0f);
+	fill(vInexactDist.begin(), vInexactDist.end(), 1.0f);
+	
+	for (iter = vActiveNodes.begin(); iter != vActiveNodes.end(); ++iter) {
+		nodeX = *iter;
+		if (nodeX != 0 && !nodeX->linkMap.empty()) {
+			for (mapIter = nodeX->linkMap.begin(); mapIter != nodeX->linkMap.end(); ++mapIter) {
+				tempId = mapIter->first;
+				nodeY = vActiveNodes[tempId];
+				
+				if (nodeX->ID > nodeY->ID)
+					computeDist(nodeX, nodeY, endLevel);										
+				else
+					computeDist(nodeY, nodeX, endLevel);										
+			}
+		}
+	}
 }
 
 int main(int argc, char* argv[])
-{ 
+{   
 	struct rlimit r;
 	getrlimit(RLIMIT_NOFILE, &r);
 	cout << "current rlimit: " << r.rlim_cur << endl;
 	r.rlim_cur = 2048;
 	setrlimit(RLIMIT_NOFILE, &r);
 	cout << "change rlimit to: " << r.rlim_cur << endl;
-	  
+	
 	struct timeval startTime, endTime;
 	
 	gettimeofday(&startTime, NULL);
@@ -515,25 +681,45 @@ int main(int argc, char* argv[])
 	unsigned int ** inPairArray;
 	float ** inDistArray;
 
-	string inFileName = "";
+	string inFileName = "", outFileName = "";
 		
 	printf("\n----------------------------------------------------------------------\n");
-	printf("                  COMPLETE CLUSTERING GENETIC DISTANCES                  \n");
+	printf("                  AVERAGE CLUSTERING GENETIC DISTANCES                  \n");
 
-
-	float endLevel = 0.10f;	
-	int i;
+	float endLevel = 0.1500f;
+	unsigned long long maxNumEdges=0;		
+	int i, iteration = 0;
 	int numReads=0;
-		
-	getOptions(argc, argv, inFileName, numReads, numFiles, endLevel);
+
+
+	getOptions(argc, argv, inFileName, numReads, numFiles, endLevel, outFileName);
 	getDistNameList(inFileName, pairNameVector, distNameVector, numFiles);
 
+
+	FILE * outFile = NULL;
+	FILE * outFile1 = NULL;	
+	
+	if (outFileName.length() > 0) {		
+		string outFileName1 = outFileName;
+		outFileName1.append("_matlab");	
+		cout << outFileName << endl;
+		cout << outFileName1 << endl;
+		outFile = fopen(outFileName.c_str(), "w");		
+		outFile1 = fopen(outFileName1.c_str(), "w");
+		if(outFile==NULL || outFile1==NULL)
+		{   
+			cout<<"Error: Cannot open output file" << endl;
+			cout << outFileName << endl;
+			cout << outFileName1 << endl;
+			exit(-1);
+		}
+	}
 	FILE * mergeFile = NULL;	
 	string mergeFileName;
 
 	mergeFileName=inFileName;
 	mergeFileName.append("_Merge");
-	mergeFile = fopen(mergeFileName.c_str(), "w");	
+	mergeFile = fopen(mergeFileName.c_str(), "w");		
 	
 	if(pairNameVector.size()==0)
 	{   
@@ -578,7 +764,8 @@ int main(int argc, char* argv[])
 		exit(-1);
 	}
 	cout<<"Use "<<numFiles<<" distance file(s)."<<endl;
-	
+	cout<<"endLevel: " << endLevel << endl;
+						
 	unsigned long long totalNumPairs = 0;
 
 	multimap<float, DistPair> nodeMap;
@@ -608,11 +795,16 @@ int main(int argc, char* argv[])
 			nodeMap.insert(pair<float, DistPair>(dist,DistPair(idX,idY,fileId)));
 	}		
 				
-
-	LinkMap::iterator mapIter;	
-						
+	unsigned int minExactIndex;
+	TreeNode *nodeX=0, *nodeY=0;
+	vector<float>::iterator minExactIter;
+	float minExactDist, minInexactDist;
+	LinkMap::iterator mapIter;							
 
 	vActiveNodes.resize(2*numReads+1);
+	vExactNodes.resize(2*numReads+1);
+	vExactDist.resize(2*numReads+1);	
+	vInexactDist.resize(2*numReads+1);
 
 	leaves=(TreeNode**)malloc(sizeof(TreeNode*)*numReads);
 
@@ -624,60 +816,124 @@ int main(int argc, char* argv[])
 	
 	for(i = 0; i < numReads; ++i) {
 		vActiveNodes[i] = leaves[i] = new TreeNode(i);	
+		vExactNodes[i] = 0;
 	}
 	
 	for(i = numReads+1; i < 2*numReads+1; ++i) {
 		vActiveNodes[i] = 0;
+		vExactNodes[i] = 0;
 	}
 	
 	newId = numReads;	
+
+	fill(vExactDist.begin(), vExactDist.end(), 1.0f);
+	fill(vInexactDist.begin(), vInexactDist.end(), 1.0f);
 	
-	cout << "numReads: " << numReads << "\tmaxNumEdges: " << MAX_NUM_EDGES << endl;
-	cout << "endLevel: " << endLevel << endl;
-			
-	while(totalNumEdges < MAX_NUM_EDGES && !nodeMap.empty())
-	{   
-		// get the first item in the nodeMap
-		iter = nodeMap.begin();
-		fileId = iter->second.fileId;        
+	maxNumEdges = numReads;
+	cout << "numReads: " << numReads << "\tmaxNumEdges: " << maxNumEdges << endl;
 
-		// write to output
-		idX = iter->second.idX;
-		idY =  iter->second.idY;
-		dist = iter->first;
-		
-		absorb(idX, idY, dist, mergeFile);	
-		
-		// remove the current item from the nodeMap
-		nodeMap.erase(iter);
-			
-		suc = loadAPair(readSizes[fileId], indices[fileId], EOFTags[fileId], idX, idY, dist, pairFileList[fileId], distFileList[fileId], inPairArray[fileId], inDistArray[fileId]);				
-
-		if (suc) 
-			nodeMap.insert(pair<float, DistPair>(dist,DistPair(idX,idY,fileId)));	
-	}
-			
-	while(!nodeMap.empty())
+	//while (!nodeMap.empty())
+	while (!allLoaded)
 	{				
-		// get the first item in the nodeMap
-		iter = nodeMap.begin();
-		fileId = iter->second.fileId;        
+		// the clustering can't continue and the edges exceed the capacity of the RAM
+		if (totalNumEdges < maxNumEdges) 
+		{
+			while(totalNumEdges <= maxNumEdges && !nodeMap.empty())
+			{   			
+				// get the first item in the nodeMap
+				iter = nodeMap.begin();
+				fileId = iter->second.fileId;        
 
-		// write to output
-		idX = iter->second.idX;
-		idY =  iter->second.idY;
-		dist = iter->first;
+				// write to output
+				idX = iter->second.idX;
+				idY =  iter->second.idY;
+				dist = iter->first;
 
-		lookAhead(idX, idY, dist, mergeFile);	
-		// remove the current item from the nodeMap
-		nodeMap.erase(iter);
+				if (outFile != NULL) {
+						fprintf(outFile, "%d %d %f\n", idX, idY, dist);
+						fprintf(outFile1, "%d %d %f\n", idX+1, idY+1, dist);
+				}										
+				
+				if (dist < endLevel || fabs(dist-endLevel) < EPSILON)				
+					absorb(idX, idY, dist);	
 			
-		suc = loadAPair(readSizes[fileId], indices[fileId], EOFTags[fileId], idX, idY, dist, pairFileList[fileId], distFileList[fileId], inPairArray[fileId], inDistArray[fileId]);				
+				// remove the current item from the nodeMap
+				nodeMap.erase(iter);
+			
+				suc = loadAPair(readSizes[fileId], indices[fileId], EOFTags[fileId], idX, idY, dist, pairFileList[fileId], distFileList[fileId], inPairArray[fileId], inDistArray[fileId]);				
+				if (suc) 
+					nodeMap.insert(pair<float, DistPair>(dist,DistPair(idX,idY,fileId)));	
+			}
+			
+			if (dist > lambda) 
+				lambda = dist;														
+		}	
+		else 
+		{	
+			maxNumEdges *= 2;
+			cout << "new maxNumEdges: " << maxNumEdges << "\tnewId: " << newId << "\tlambda: " << lambda << endl;
+			
+			if (maxNumEdges > UPPER_BOUND_NUM_EDGES)
+			{
+				/*	
+				cout << "LOOK AHEAD: current node: " << newId << "\tnum edges: " << totalNumEdges << endl;	
+				
+				while(!nodeMap.empty())
+				{   
+					// get the first item in the nodeMap
+					iter = nodeMap.begin();
+					fileId = iter->second.fileId;        
 
-		if (suc) 
-			nodeMap.insert(pair<float, DistPair>(dist,DistPair(idX,idY,fileId)));	
-	}
-	
+					// write to output
+					idX = iter->second.idX;
+					idY =  iter->second.idY;
+					dist = iter->first;
+
+					lookAhead(idX, idY, dist);	
+					// remove the current item from the nodeMap
+					nodeMap.erase(iter);
+			
+					suc = loadAPair(readSizes[fileId], indices[fileId], EOFTags[fileId], idX, idY, dist, pairFileList[fileId], distFileList[fileId], inPairArray[fileId], inDistArray[fileId]);
+					if (suc) 
+						nodeMap.insert(pair<float, DistPair>(dist,DistPair(idX,idY,fileId)));	
+				}	
+				*/
+				endLevel = lambda;				
+				allLoaded = true;
+				cout << "new endLevel: " << endLevel << endl;
+			}							
+		}	
+				
+		if (nodeMap.empty())
+			allLoaded = true;					
+			
+		updateAllMin(endLevel);		
+				
+		minInexactDist = *min_element(vInexactDist.begin(), vInexactDist.end());
+		minExactIter = min_element(vExactDist.begin(),vExactDist.end());
+		minExactDist = *minExactIter;
+		
+		//cout << "lambda_" << iteration << " = " << lambda << "\t" << lambda/2 << "\t" << minInexactDist << endl;
+		
+		while ((minExactDist < 1.0f) && (minExactDist < minInexactDist || fabs(minExactDist-minInexactDist) < EPSILON))
+		{				
+			minExactIndex = minExactIter-vExactDist.begin();
+				
+			nodeX = vActiveNodes[minExactIndex]->topParent;				
+			nodeY = vExactNodes[minExactIndex]->topParent;
+				
+			merge(nodeX, nodeY, minExactDist, endLevel);
+			fprintf(mergeFile, "%d %d %.6f\n", nodeX->ID+1, nodeY->ID+1, minExactDist);	
+			
+			minInexactDist = *min_element(vInexactDist.begin(), vInexactDist.end());
+			minExactIter = min_element(vExactDist.begin(),vExactDist.end());
+			minExactDist = *minExactIter;
+		}	
+		
+		//cout << "cannot progress: " << newId << "\t" << totalNumEdges << "\t" << minInexactDist << "\t" << minExactDist << "\t" << minExactDist - lambda/2 << "\n";	
+		++iteration;							
+	} 
+		
 	cout << "DONE!" << endl;
 	cout << "current node: " << newId << "\tnum unlinked: " << totalUnlinked << endl;	
 
@@ -704,7 +960,7 @@ int main(int argc, char* argv[])
 	clusterName=inFileName;
 	clusterName.append(".Cluster");
 
-	printClusters(roots, orphanNodes, clusterListName, clusterName, endLevel);			
+	printClusters(roots, orphanNodes, clusterListName, clusterName, endLevel);		
 	
 	// clear memory
 	emptyTree(roots);	
@@ -712,6 +968,8 @@ int main(int argc, char* argv[])
 	orphanNodes.clear();	
 	free(leaves);
 	vActiveNodes.clear();
+	vExactNodes.clear();
+	vExactDist.clear();
 	
 	// clean up
 	for(fileId=0; fileId<numFiles; ++fileId) {
@@ -725,11 +983,16 @@ int main(int argc, char* argv[])
 	free(EOFTags);
 	free(pairFileList);
 	free(distFileList);	
-	fclose(mergeFile);
 	
 	gettimeofday(&endTime, NULL);	
 	long elapsedTime = (endTime.tv_sec - startTime.tv_sec) * 1000u + (endTime.tv_usec - startTime.tv_usec) / 1.e3 + 0.5;
-	
+
+	if (outFile != NULL) {
+		fclose(outFile);
+		fclose(outFile1);
+	}
+	fclose(mergeFile);
+		
 	printf("totalNumPairs: %llu\n", totalNumPairs);
 	printf("Time taken: %.3f s\n", elapsedTime/1.e3);
 	printf("\n----------------------------------------------------------------------\n");

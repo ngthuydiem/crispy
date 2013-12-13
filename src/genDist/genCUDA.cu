@@ -160,9 +160,9 @@ void computeGenDist_CUDA(FILE* inPairFile, string pairFileName, string distFileN
 		if (numPairsPerChunk % 16 != 0 && numPairsPerChunk > 16) 
 			numPairsPerChunk += 16 - (numPairsPerChunk % 16);		
 		/*
-		fprintf(stderr, "numPairs: %d\n", numPairs);	
-		fprintf(stderr, "numStreams: %d\n", NUM_STREAMS);
-		fprintf(stderr, "numPairsPerChunk: %d\n", numPairsPerChunk);							
+		printf("numPairs: %d\n", numPairs);	
+		printf("numStreams: %d\n", NUM_STREAMS);
+		printf("numPairsPerChunk: %d\n", numPairsPerChunk);							
 		*/
 		
 		for (i = 0; i < NUM_STREAMS; ++i) {
@@ -212,7 +212,7 @@ void computeGenDist_CUDA(FILE* inPairFile, string pairFileName, string distFileN
 			dist = h_distArray[i];	
 			
 #if DEBUG			
-			fprintf(stderr, "%d: (%d, %d) %.3f\n", i, h_pairArray[i*2], h_pairArray[i*2+1], dist);
+			printf("%d: (%d, %d) %.3f\n", i, h_pairArray[i*2], h_pairArray[i*2+1], dist);
 #endif				
 			
 			if (dist < threshold || fabs(dist-threshold) < EPSILON)
@@ -250,8 +250,7 @@ void computeGenDist_CUDA(FILE* inPairFile, string pairFileName, string distFileN
 				
 		totalNumPairs += count;										
 	}	
-	
-	fprintf(stderr, "totalNumPairs: %llu\n", totalNumPairs);	
+		
 	printf("%llu\n", totalNumPairs);	
 	
 	for (i = 0; i < NUM_STREAMS; ++i)

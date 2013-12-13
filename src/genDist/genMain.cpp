@@ -45,7 +45,7 @@ int main(int argc, char* argv[])
 	cpu_set_t *cpusetp;
 	cpusetp = CPU_ALLOC(num_cpus);
 	if (cpusetp == NULL) {
-		fprintf(stderr, "!!!!error cpu_alloc\n");	
+		printf("!!!!error cpu_alloc\n");	
 		exit(-1);
 	}
 	
@@ -55,26 +55,26 @@ int main(int argc, char* argv[])
 	int cpu;
 	for (cpu = 0; cpu < num_cpus; cpu ++)
 		CPU_SET_S(cpu, size, cpusetp);
-	fprintf(stderr, "CPU_COUNT() of set:    %d\n", CPU_COUNT_S(size, cpusetp));
+	printf("CPU_COUNT() of set:    %d\n", CPU_COUNT_S(size, cpusetp));
 	
 	if (sched_setaffinity(0, size, cpusetp) == - 1) {
-		fprintf(stderr, "!!!!error setting affinity\n");	
+		printf("!!!!error setting affinity\n");	
 		exit(-1);
 	}
 	
 	int afin;	
 	afin = sched_getaffinity(0, size, cpusetp);
-	fprintf(stderr, "Affinity: %d, 0x%x\n", afin, cpusetp);
+	printf("Affinity: %d, 0x%x\n", afin, cpusetp);
 #else
 	cpu_set_t mask;	
 	sched_getaffinity(0, sizeof(mask), &mask);
 #endif
 	
 		
-	fprintf(stderr,  "\n----------------------------------------------------------------------\n");
-	fprintf(stderr, "                    COMPUTE GENETIC DISTANCES                          \n");
-	fprintf(stderr, "File name: %s.\n", readFileName.c_str());
-	fprintf(stderr, "numReads: %d. band: %d. threshold: %f\n\n", numReads, band, threshold);
+	printf( "\n----------------------------------------------------------------------\n");
+	printf("                    COMPUTE GENETIC DISTANCES                          \n");
+	printf("File name: %s.\n", readFileName.c_str());
+	printf("numReads: %d. band: %d. threshold: %f\n\n", numReads, band, threshold);
 
 	inPairFile = fopen(inFileName.c_str(), "rb");
 	if (inPairFile == NULL) {
@@ -83,13 +83,13 @@ int main(int argc, char* argv[])
 	}
 			
 	if (useGPU) {
-		fprintf(stderr, "USE GPU. numStreams: %d\n", NUM_STREAMS);
+		printf("USE GPU. numStreams: %d\n", NUM_STREAMS);
 		computeGenDist_CUDA(inPairFile, pairFileName, distFileName, readArray, numReads, maxLen, threshold, band);	
 	}
 	else {
 		omp_set_num_threads(numThreads);
 		
-		fprintf(stderr, "USE CPU. numThreads: %d\n", numThreads);
+		printf("USE CPU. numThreads: %d\n", numThreads);
 
 		if (band > 1)
 			computeGenDist_CPU_band(inPairFile, pairFileName, distFileName, readArray, numReads, maxLen, threshold, band, numThreads);	
@@ -102,8 +102,8 @@ int main(int argc, char* argv[])
 	gettimeofday(&endTime, NULL);	
 	long elapsedTime = (endTime.tv_sec - startTime.tv_sec) * 1000u + (endTime.tv_usec - startTime.tv_usec) / 1.e3 + 0.5;
 
-	fprintf(stderr, "Time taken: %.3f s\n", elapsedTime/1.e3);
-	fprintf(stderr, "\n----------------------------------------------------------------------\n");
+	printf("Time taken: %.3f s\n", elapsedTime/1.e3);
+	printf("\n----------------------------------------------------------------------\n");
 
 	return 0;
 }

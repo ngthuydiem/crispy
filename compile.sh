@@ -35,3 +35,10 @@ make
 cp hcluster ../../bin
 make clean
 cd ../..
+
+cd src/sparsecut
+make clean
+make
+cp sparsecut ../../bin
+make clean
+cd ../..

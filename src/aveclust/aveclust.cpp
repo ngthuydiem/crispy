@@ -104,7 +104,7 @@ void help()
 	cout<<"-h help description."<<endl;
 }
 
-void getOptions(int argc, char** argv, string &inFileName, int &numReads, int &numFiles, float &stepSize, float &endLevel, unsigned long long &matrixSize, string &outFileName)
+void getOptions(int argc, char** argv, string &inFileName, int &numReads, int &numFiles, float &endLevel, string &outFileName)
 {   
 	numReads = 0;
 	numFiles = 0;
@@ -118,14 +118,8 @@ void getOptions(int argc, char** argv, string &inFileName, int &numReads, int &n
 		if(strcmp("-f",argv[i])==0) {		
 			numFiles=atoi(argv[i+1]);
 		}
-		if(strcmp("-s",argv[i])==0) {		
-			stepSize=atof(argv[i+1]);
-		}	
 		if(strcmp("-e",argv[i])==0) {		
 			endLevel=atof(argv[i+1]);
-		}	
-		if(strcmp("-m",argv[i])==0) {		
-			matrixSize=atol(argv[i+1]);
 		}	
 		if(strcmp("-o",argv[i])==0) {		
 			outFileName.assign(argv[i+1]);
@@ -253,7 +247,7 @@ void emptyTree(NodeSet roots)
 
 int printClusters(NodeSet roots, IDList orphanNodes,
 	string clusterListName, string clusterName, 
-	float stepSize, float endLevel)
+	float endLevel)
 {   
 	TreeNode *tempNode = 0;
 	NodeSetIter setIter;
@@ -276,6 +270,7 @@ int printClusters(NodeSet roots, IDList orphanNodes,
 	}
 	printf("\n");
 
+	float stepSize = endLevel/5;
 	// for each distance level
 	for(float distLevel=stepSize; distLevel<endLevel || fabs(distLevel-endLevel) < EPSILON; distLevel+=stepSize)
 	{   
@@ -691,13 +686,13 @@ int main(int argc, char* argv[])
 	printf("\n----------------------------------------------------------------------\n");
 	printf("                  AVERAGE CLUSTERING GENETIC DISTANCES                  \n");
 
-	float stepSize = 0.005f, endLevel = 0.1500f;
-	unsigned long long matrixSize=0, maxNumEdges=0;		
+	float endLevel = 0.1500f;
+	unsigned long long maxNumEdges=0;		
 	int i, iteration = 0;
 	int numReads=0;
 
 
-	getOptions(argc, argv, inFileName, numReads, numFiles, stepSize, endLevel, matrixSize, outFileName);
+	getOptions(argc, argv, inFileName, numReads, numFiles, endLevel, outFileName);
 	getDistNameList(inFileName, pairNameVector, distNameVector, numFiles);
 
 
@@ -719,6 +714,12 @@ int main(int argc, char* argv[])
 			exit(-1);
 		}
 	}
+	FILE * mergeFile = NULL;	
+	string mergeFileName;
+
+	mergeFileName=inFileName;
+	mergeFileName.append("_Merge");
+	mergeFile = fopen(mergeFileName.c_str(), "w");		
 	
 	if(pairNameVector.size()==0)
 	{   
@@ -763,7 +764,7 @@ int main(int argc, char* argv[])
 		exit(-1);
 	}
 	cout<<"Use "<<numFiles<<" distance file(s)."<<endl;
-	cout<<"endLevel: " << endLevel << " stepSize: " << stepSize << endl;
+	cout<<"endLevel: " << endLevel << endl;
 						
 	unsigned long long totalNumPairs = 0;
 
@@ -828,13 +829,8 @@ int main(int argc, char* argv[])
 	fill(vExactDist.begin(), vExactDist.end(), 1.0f);
 	fill(vInexactDist.begin(), vInexactDist.end(), 1.0f);
 	
-	float alpha = sqrt(numReads)/4;
-	float beta = log10(alpha)/2;
-	if (beta <= 1.0)
-		beta = 1.1f;
-	maxNumEdges = min((float)UPPER_BOUND_NUM_EDGES, matrixSize/alpha);
+	maxNumEdges = numReads;
 	cout << "numReads: " << numReads << "\tmaxNumEdges: " << maxNumEdges << endl;
-	cout << "alpha: " << alpha << "\tbeta: " << beta << endl;
 
 	//while (!nodeMap.empty())
 	while (!allLoaded)
@@ -874,7 +870,7 @@ int main(int argc, char* argv[])
 		}	
 		else 
 		{	
-			maxNumEdges *= beta;
+			maxNumEdges *= 2;
 			cout << "new maxNumEdges: " << maxNumEdges << "\tnewId: " << newId << "\tlambda: " << lambda << endl;
 			
 			if (maxNumEdges > UPPER_BOUND_NUM_EDGES)
@@ -926,7 +922,8 @@ int main(int argc, char* argv[])
 			nodeX = vActiveNodes[minExactIndex]->topParent;				
 			nodeY = vExactNodes[minExactIndex]->topParent;
 				
-			merge(nodeX, nodeY, minExactDist, endLevel);	
+			merge(nodeX, nodeY, minExactDist, endLevel);
+			fprintf(mergeFile, "%d %d %.6f\n", nodeX->ID+1, nodeY->ID+1, minExactDist);	
 			
 			minInexactDist = *min_element(vInexactDist.begin(), vInexactDist.end());
 			minExactIter = min_element(vExactDist.begin(),vExactDist.end());
@@ -963,7 +960,7 @@ int main(int argc, char* argv[])
 	clusterName=inFileName;
 	clusterName.append(".Cluster");
 
-	printClusters(roots, orphanNodes, clusterListName, clusterName, stepSize, endLevel);			
+	printClusters(roots, orphanNodes, clusterListName, clusterName, endLevel);		
 	
 	// clear memory
 	emptyTree(roots);	
@@ -994,6 +991,7 @@ int main(int argc, char* argv[])
 		fclose(outFile);
 		fclose(outFile1);
 	}
+	fclose(mergeFile);
 		
 	printf("totalNumPairs: %llu\n", totalNumPairs);
 	printf("Time taken: %.3f s\n", elapsedTime/1.e3);

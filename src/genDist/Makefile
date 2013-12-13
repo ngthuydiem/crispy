@@ -18,7 +18,7 @@ EXEC = genDist
 all: $(CXXOBJS) $(NVCCOBJS)
 	$(NVCC) $(NVCCFLAGS) -o $(EXEC) $(CXXOBJS) $(NVCCOBJS) $(NVCCLIBS)
 	strip $(EXEC)
-	cp $(EXEC) ../../executable/
+	#cp $(EXEC) ../../executable/
 genKernel.o:
 	$(NVCC) $(NVCCFLAGS) -c genKernel.cu
 genCUDA.o:

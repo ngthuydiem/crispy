@@ -227,9 +227,9 @@ void computeGenDist_CPU_full(FILE* inPairFile, string pairFileName, string distF
 			{
 #if DEBUG			
 			if (maxMLastCol > maxMLastRow)
-				fprintf(stderr, "%d: (%d-%d, %d-%d) %.3f (%d/%d)\n", pairIndex, readIndex1, length1, readIndex2, length2, dist, MLCol, ALCol);
+				printf("%d: (%d-%d, %d-%d) %.3f (%d/%d)\n", pairIndex, readIndex1, length1, readIndex2, length2, dist, MLCol, ALCol);
 			else
-				fprintf(stderr, "%d: (%d-%d, %d-%d) %.3f (%d/%d)\n", pairIndex, readIndex1, length1, readIndex2, length2, dist, MLRow, ALRow);
+				printf("%d: (%d-%d, %d-%d) %.3f (%d/%d)\n", pairIndex, readIndex1, length1, readIndex2, length2, dist, MLRow, ALRow);
 #endif			
 			if (dist < threshold || fabs(dist-threshold) < EPSILON)
 			{
@@ -311,7 +311,7 @@ void computeGenDist_CPU_band(FILE* inPairFile, string pairFileName, string distF
 	AL = (int**) Malloc(sizeof(int*) * numThreads * 2);
 	ULD = (char**) Malloc(sizeof(char*) * numThreads * 2);
 	if (M==NULL || ML==NULL || AL==NULL || ULD==NULL) {
-		fprintf(stderr, "error allocating memory");
+		printf("error allocating memory");
 		exit(-1);
 	}
 
@@ -322,7 +322,7 @@ void computeGenDist_CPU_band(FILE* inPairFile, string pairFileName, string distF
 		ULD[i] = (char*) Malloc(sizeof(char) * (maxLen+1));	
 		
 		if (M[i]==NULL || ML[i]==NULL || AL[i]==NULL || ULD[i]==NULL) {
-			fprintf(stderr, "error allocating memory");
+			printf("error allocating memory");
 			exit(-1);
 		}
 	}
@@ -467,9 +467,9 @@ void computeGenDist_CPU_band(FILE* inPairFile, string pairFileName, string distF
 			{
 #if DEBUG
 			if (maxMLastCol > maxMLastRow)
-				fprintf(stderr, "thread %d, pair %d: (%d, %d) %.3f (%d/%d) score=%d\n", n, pairIndex, readIndex1, readIndex2, dist, MLCol, ALCol, maxMLastCol);
+				printf("thread %d, pair %d: (%d, %d) %.3f (%d/%d) score=%d\n", n, pairIndex, readIndex1, readIndex2, dist, MLCol, ALCol, maxMLastCol);
 			else
-				fprintf(stderr, "thread %d, pair %d: (%d, %d) %.3f (%d/%d) score=%d\n", n, pairIndex, readIndex1, readIndex2, dist, MLRow, ALRow, maxMLastRow);
+				printf("thread %d, pair %d: (%d, %d) %.3f (%d/%d) score=%d\n", n, pairIndex, readIndex1, readIndex2, dist, MLRow, ALRow, maxMLastRow);
 #endif			
 			if (dist < threshold || fabs(dist-threshold) < EPSILON)
 			{
@@ -504,8 +504,7 @@ void computeGenDist_CPU_band(FILE* inPairFile, string pairFileName, string distF
 		writeVectorToFile_CPU(h_pairVector, h_distVector, pairFileName, distFileName, count, fileId);	
 		totalNumPairs += count;
 	}		
-
-	//printf("totalNumPairs: %lld\n", totalNumPairs);
+	
 	printf("%lld\n", totalNumPairs);
 
 	// clean up
