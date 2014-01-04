@@ -120,8 +120,11 @@ void computeGenDist_CPU_full(FILE* inPairFile, string pairFileName, string distF
 		exit(-1);
 	}		
 
-	thrust::host_vector< float > h_distVector (MAX_NUM_PAIRS_CPU * 2);	
-	thrust::host_vector< thrust::pair<unsigned int, unsigned int> > h_pairVector (MAX_NUM_PAIRS_CPU * 2);	
+	size_t maxNumPairs = numReads*256;
+	if (maxNumPairs > MAX_NUM_PAIRS)
+		maxNumPairs = MAX_NUM_PAIRS;
+	thrust::host_vector< float > h_distVector (maxNumPairs * 2);	
+	thrust::host_vector< thrust::pair<unsigned int, unsigned int> > h_pairVector (maxNumPairs * 2);	
 
 	while (EOFTag != 1)
 	{
@@ -240,7 +243,7 @@ void computeGenDist_CPU_full(FILE* inPairFile, string pairFileName, string distF
 			}
 		}
 		
-		if (count >= MAX_NUM_PAIRS_CPU)
+		if (count >= maxNumPairs)
 		{		
 			h_pairVector.resize(count);
 			h_distVector.resize(count);			
@@ -251,8 +254,8 @@ void computeGenDist_CPU_full(FILE* inPairFile, string pairFileName, string distF
 			totalNumPairs += count;
 			count = 0;										
 			
-			h_pairVector.resize(MAX_NUM_PAIRS_CPU * 2);
-			h_distVector.resize(MAX_NUM_PAIRS_CPU * 2);	
+			h_pairVector.resize(maxNumPairs * 2);
+			h_distVector.resize(maxNumPairs * 2);	
 		}		
 	}
 	
@@ -335,9 +338,11 @@ void computeGenDist_CPU_band(FILE* inPairFile, string pairFileName, string distF
 		fclose(inPairFile);
 		exit(-2);
 	}	
-
-	thrust::host_vector< float > h_distVector (MAX_NUM_PAIRS_CPU * 2);	
-	thrust::host_vector< thrust::pair<unsigned int, unsigned int> > h_pairVector (MAX_NUM_PAIRS_CPU * 2);	
+	size_t maxNumPairs = numReads*256;
+	if (maxNumPairs > MAX_NUM_PAIRS)
+		maxNumPairs = MAX_NUM_PAIRS;
+	thrust::host_vector< float > h_distVector (maxNumPairs * 2);	
+	thrust::host_vector< thrust::pair<unsigned int, unsigned int> > h_pairVector (maxNumPairs * 2);	
 
 	while (EOFTag != 1)
 	{
@@ -480,7 +485,7 @@ void computeGenDist_CPU_band(FILE* inPairFile, string pairFileName, string distF
 			}
 			}	
 		}
-		if (count >= MAX_NUM_PAIRS_CPU)
+		if (count >= maxNumPairs)
 		{		
 			h_pairVector.resize(count);
 			h_distVector.resize(count);			
@@ -491,8 +496,8 @@ void computeGenDist_CPU_band(FILE* inPairFile, string pairFileName, string distF
 			totalNumPairs += count;
 			count = 0;										
 			
-			h_pairVector.resize(MAX_NUM_PAIRS_CPU * 2);
-			h_distVector.resize(MAX_NUM_PAIRS_CPU * 2);	
+			h_pairVector.resize(maxNumPairs * 2);
+			h_distVector.resize(maxNumPairs * 2);	
 		}				
 	}
 	

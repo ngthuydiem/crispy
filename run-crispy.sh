@@ -1,19 +1,18 @@
 #!/bin/zsh
 
-#input: $INPUT, $K_CUTOFF, $CUTOFF, $B
+#input: $INPUT, $K, $B
+PROFILER=(/usr/bin/time -f "%e %M")
 INPUT=$1
 K=$2
-K_CUTOFF=$3
-B=$4
-CUTOFF=$5
+B=$3
 
 UNIQUE_INPUT=$INPUT"_Clean"
 
 ./crispy-cuda/bin/preprocess -i $INPUT
-./crispy-cuda/bin/kmerDist -i $UNIQUE_INPUT -k $K -t $K_CUTOFF
-./crispy-cuda/bin/genDist -i $UNIQUE_INPUT -b $B -t $CUTOFF 
+$PROFILER ./crispy-cuda/bin/kmerDist -i $UNIQUE_INPUT -k $K 
+$PROFILER ./crispy-cuda/bin/genDist -i $UNIQUE_INPUT -b $B
 
 NUM_READS=`grep '>' $UNIQUE_INPUT | wc -l`
 NUM_FILES=`ls $UNIQUE_INPUT".ndist"* | wc -l`	
-./crispy-cuda/bin/aveclust -i $UNIQUE_INPUT -n $NUM_READS -f $NUM_FILES -e $CUTOFF 
+$PROFILER ./crispy-cuda/bin/aveclust -i $UNIQUE_INPUT -n $NUM_READS -f $NUM_FILES 
 

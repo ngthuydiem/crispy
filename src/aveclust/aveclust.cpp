@@ -310,8 +310,8 @@ int printClusters(NodeSet roots, IDList orphanNodes,
 			tempList.clear();
 		}
 
-		fprintf(clusterListFile," %.3f ", distLevel);
-		fprintf(clusterFile," %.3f ", distLevel);
+		fprintf(clusterListFile," %.6f ", distLevel);
+		fprintf(clusterFile," %.6f ", distLevel);
 		
 		// write the nodeList to file
 		tempList.clear();
@@ -360,7 +360,7 @@ int printClusters(NodeSet roots, IDList orphanNodes,
 		numOTUs += orphanNodes.size();
 		fprintf(clusterFile,"|\n");
 		fprintf(clusterListFile, "\n");		
-		printf("Dist: %.3f. numOTUs: %u. numSingletons: %lu\n", distLevel, numOTUs, orphanNodes.size());
+		printf("Dist: %.6f. numOTUs: %u. numSingletons: %lu\n", distLevel, numOTUs, orphanNodes.size());
 	}
 	
 	printf("\n");
@@ -686,15 +686,17 @@ int main(int argc, char* argv[])
 	printf("\n----------------------------------------------------------------------\n");
 	printf("                  AVERAGE CLUSTERING GENETIC DISTANCES                  \n");
 
-	float endLevel = 0.1500f;
+	float endLevel = -1;
 	unsigned long long maxNumEdges=0;		
 	int i, iteration = 0;
 	int numReads=0;
 
 
 	getOptions(argc, argv, inFileName, numReads, numFiles, endLevel, outFileName);
-	getDistNameList(inFileName, pairNameVector, distNameVector, numFiles);
+	if (endLevel < 0)
+		endLevel = 1/log((double)numReads);
 
+	getDistNameList(inFileName, pairNameVector, distNameVector, numFiles);
 
 	FILE * outFile = NULL;
 	FILE * outFile1 = NULL;	

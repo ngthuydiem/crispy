@@ -19,7 +19,7 @@ int main(int argc, char* argv[]) {
 
 	string inFileName, pairFileName, distFileName;
 	bool hasDistances = false, useGPU = true, useMPI = false;
-	float threshold = THRESHOLD;	
+	float threshold = -1;	
 
 	int numThreads = 1, numReads, maxLen = 0, arrayDim, K = 6;
 	// open the output file
@@ -36,10 +36,13 @@ int main(int argc, char* argv[]) {
 	numReads = readFile(inFileName, readArray, maxLen, K);		
 	
 	if (numReads > MAX_NUM_READS || maxLen > MAX_READ_LEN) {
-		printf("Error: unsupported numReads or maxLen. Exit...");
+		printf("Error: unsupported numReads: %d or maxLen: %d. Exit...", numReads, maxLen);
 		exit(-1);
 	}
 	
+	if (threshold < 0)
+		threshold = 2/log((double)numReads);
+		
 	arrayDim = (int)(16 * pow(8.0, floor(log10((double)numReads))-1));	 
 
 	if (arrayDim > 1024)
@@ -289,13 +292,7 @@ void getCommandOptions(int argc, char* argv[], string &inFileName, float &thresh
 			}		
 		}
 		if (strcmp("-t", argv[i]) == 0) {
-			threshold = (float)atof(argv[i + 1]);			
-			// check distance threshold 
-			if (threshold < 0.0f || threshold > 1.0f)
-			{
-				cout << "Warning: invalid distance threshold (-t option). Set to " << THRESHOLD << "."<< endl;
-				threshold = THRESHOLD;
-			}
+			threshold = (float)atof(argv[i + 1]);								
 		}
 		if (strcmp("-n", argv[i]) == 0) {
 			numThreads = atoi(argv[i + 1]);				

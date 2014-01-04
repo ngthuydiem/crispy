@@ -18,9 +18,8 @@ int main(int argc, char* argv[])
 	string readFileName, inFileName, pairFileName, distFileName;
 	int numReads, numThreads, band=BAND, maxLen = 0;
 	FILE *inPairFile;
-	float threshold = (float)THRESHOLD;
+	float threshold = -1;
 	bool useGPU = true;
-
 	
 	getCommandOptions(argc, argv, readFileName, threshold, band, useGPU, numThreads);
 	inFileName = readFileName;	
@@ -39,6 +38,9 @@ int main(int argc, char* argv[])
 		cout << numReads << "\t" << maxLen << endl;
 		exit(-1);
 	}
+	
+	if (threshold < 0)
+		threshold = 1/log((double)numReads);
 
 #if SET_AFFINITY	
   int num_cpus = 8;
@@ -338,13 +340,7 @@ void getCommandOptions(int argc, char* argv[], string &readFileName, float &thre
 			}
 		}
 		if (strcmp("-t", argv[i]) == 0) {
-			threshold = (float)atof(argv[i + 1]);
-			// check distance threshold 
-			if (threshold < 0.0f || threshold > 1.0f)
-			{
-				cout << "Warning: invalid distance threshold (-t option). Set to " << THRESHOLD << "."<< endl;
-				threshold = THRESHOLD;
-			}
+			threshold = (float)atof(argv[i + 1]);			
 		}
 		if (strcmp("-n", argv[i]) == 0) {
 			numThreads = atoi(argv[i + 1]);				
