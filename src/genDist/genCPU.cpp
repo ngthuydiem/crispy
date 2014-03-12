@@ -120,9 +120,7 @@ void computeGenDist_CPU_full(FILE* inPairFile, string pairFileName, string distF
 		exit(-1);
 	}		
 
-	size_t maxNumPairs = numReads*256;
-	if (maxNumPairs > MAX_NUM_PAIRS)
-		maxNumPairs = MAX_NUM_PAIRS;
+	size_t maxNumPairs = BLOCK_SIZE*GRID_SIZE;
 	thrust::host_vector< float > h_distVector (maxNumPairs * 2);	
 	thrust::host_vector< thrust::pair<unsigned int, unsigned int> > h_pairVector (maxNumPairs * 2);	
 
@@ -338,9 +336,7 @@ void computeGenDist_CPU_band(FILE* inPairFile, string pairFileName, string distF
 		fclose(inPairFile);
 		exit(-2);
 	}	
-	size_t maxNumPairs = numReads*256;
-	if (maxNumPairs > MAX_NUM_PAIRS)
-		maxNumPairs = MAX_NUM_PAIRS;
+	size_t maxNumPairs = BLOCK_SIZE*GRID_SIZE;
 	thrust::host_vector< float > h_distVector (maxNumPairs * 2);	
 	thrust::host_vector< thrust::pair<unsigned int, unsigned int> > h_pairVector (maxNumPairs * 2);	
 

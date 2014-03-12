@@ -241,7 +241,45 @@ int readFile(list<READ> &readList, string inFileName, char fileFormat)
 	return readIndex;
 }
 
-int mergeIdenticalReads(list<READ> &readList)
+int mergeReads(list<READ> &readList)
+{
+	list<READ>::iterator it1, it2;
+	int numMerges = 0;
+	string seq1, seq2;
+
+	// Sort the whole list
+	readList.sort();
+
+	for (it1 = readList.begin(); it1 != readList.end();)
+	{
+		if (it1->freq == 0)
+		{
+			++it1;
+			continue;
+		}
+		seq1 = it1->seq;
+		it2 = it1;
+		++it2;
+		while (it2->freq == 0 && it2 != readList.end())
+			++it2;
+
+		if (it2 == readList.end())
+			break;
+		seq2 = it2->seq;
+
+		if (seq2 == seq1)
+		{
+			it2->freq += it1->freq;
+			it1->freq = 0;
+			++numMerges;
+		}
+		it1 = it2;
+	}
+
+	return numMerges;
+}
+
+int mergeSubstrings(list<READ> &readList)
 {
 	list<READ>::iterator it1, it2;
 	int numMerges = 0;
@@ -673,7 +711,7 @@ int main(int argc, char* argv[])
 	if (primerCheckFlag)
 		numReadsDeleted += processPrimer(readList, primerSequence, maxMismatches);
 
-	numReadsDeleted += mergeIdenticalReads(readList);
+	numReadsDeleted += mergeReads(readList);
 
 	printf("Total numReads: %d. Preprocessed numReads: %d\n", numReads, numReads- numReadsDeleted);
 

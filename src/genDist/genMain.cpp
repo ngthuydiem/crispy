@@ -39,8 +39,8 @@ int main(int argc, char* argv[])
 		exit(-1);
 	}
 	
-	if (threshold < 0)
-		threshold = 1/log((double)numReads);
+	if (threshold < 0 || threshold > 1) 	
+		threshold = 1/log2((double)numReads);					
 
 #if SET_AFFINITY	
   int num_cpus = 8;

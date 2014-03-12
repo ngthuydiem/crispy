@@ -147,9 +147,7 @@ void computeGenDist_CUDA(FILE* inPairFile, string pairFileName, string distFileN
 	for (i = 0; i < NUM_STREAMS; ++i)
 		checkCudaErrors( cudaStreamCreate(&stream[i]) );
 
-	size_t maxNumPairs = numReads*512;
-	if (maxNumPairs > MAX_NUM_PAIRS)
-		maxNumPairs = MAX_NUM_PAIRS;
+	size_t maxNumPairs = NUM_PAIRS;
 	thrust::host_vector< float > h_distVector (maxNumPairs * 2);
 	thrust::host_vector< thrust::pair<unsigned int, unsigned int> > h_pairVector (maxNumPairs * 2);
 	float dist;
@@ -233,13 +231,14 @@ void computeGenDist_CUDA(FILE* inPairFile, string pairFileName, string distFileN
 			h_distVector.resize(count);	
 	
 			writeVectorToFile_GPU(h_pairVector, h_distVector, pairFileName, distFileName, count, fileId);	
+						
+			++ fileId;
+			totalNumPairs += count;
+			count = 0;										
 			
 			h_pairVector.resize(maxNumPairs * 2);
 			h_distVector.resize(maxNumPairs * 2);	
 	
-			++ fileId;
-			totalNumPairs += count;
-			count = 0;										
 		}			
 	}
 	

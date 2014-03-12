@@ -270,7 +270,7 @@ int printClusters(NodeSet roots, IDList orphanNodes,
 	}
 	printf("\n");
 
-	float stepSize = endLevel/5;
+	float stepSize = endLevel/10;
 	// for each distance level
 	for(float distLevel=stepSize; distLevel<endLevel || fabs(distLevel-endLevel) < EPSILON; distLevel+=stepSize)
 	{   
@@ -666,7 +666,7 @@ int main(int argc, char* argv[])
 	struct rlimit r;
 	getrlimit(RLIMIT_NOFILE, &r);
 	cout << "current rlimit: " << r.rlim_cur << endl;
-	r.rlim_cur = 2048;
+	r.rlim_cur = 1024 * 16;
 	setrlimit(RLIMIT_NOFILE, &r);
 	cout << "change rlimit to: " << r.rlim_cur << endl;
 	
@@ -691,10 +691,9 @@ int main(int argc, char* argv[])
 	int i, iteration = 0;
 	int numReads=0;
 
-
 	getOptions(argc, argv, inFileName, numReads, numFiles, endLevel, outFileName);
-	if (endLevel < 0)
-		endLevel = 1/log((double)numReads);
+	if (endLevel < 0 || endLevel > 1) 		
+		endLevel = 1/log2((double)numReads);			
 
 	getDistNameList(inFileName, pairNameVector, distNameVector, numFiles);
 
@@ -720,7 +719,7 @@ int main(int argc, char* argv[])
 	string mergeFileName;
 
 	mergeFileName=inFileName;
-	mergeFileName.append("_Merge");
+	mergeFileName.append("_Align_Merge");
 	mergeFile = fopen(mergeFileName.c_str(), "w");		
 	
 	if(pairNameVector.size()==0)

@@ -20,14 +20,13 @@
 using namespace std;
 
 #define BUF_SIZE 		4096
-#define MAX_NUM_PAIRS 		1024*1024*32
 
 #define BLOCK_SIZE		576
 #define GRID_SIZE		256
 #define NUM_STREAMS		4
 #define NUM_PAIRS		BLOCK_SIZE * GRID_SIZE * NUM_STREAMS
 
-#define MAX_READ_LEN		1024
+#define MAX_READ_LEN		1024*2
 #define MAX_NUM_READS		1024*1024
 
 #define GO			-10

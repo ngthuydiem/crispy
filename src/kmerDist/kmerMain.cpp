@@ -40,13 +40,13 @@ int main(int argc, char* argv[]) {
 		exit(-1);
 	}
 	
-	if (threshold < 0)
-		threshold = 2/log((double)numReads);
+	if (threshold < 0 || threshold > 1) 		
+		threshold = 2/log2((double)numReads);	
 		
-	arrayDim = (int)(16 * pow(8.0, floor(log10((double)numReads))-1));	 
+	arrayDim = (int)(4 * pow(8.0, floor(log10((double)numReads))-1));	 
 
-	if (arrayDim > 1024)
-		arrayDim = 1024;		
+	if (arrayDim > 1536)
+		arrayDim = 1536;		
 	
 	omp_set_num_threads(numThreads);
 

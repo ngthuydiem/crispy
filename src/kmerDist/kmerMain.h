@@ -26,8 +26,8 @@ using namespace std;
 #define BLOCK_DIM 			16
 #define THRESHOLD 			0.5
 #define EPSILON 			0.00001
-#define DEFAULT_NUM_READS 	1000000
-#define MAX_READ_LEN		1024
+#define DEFAULT_NUM_READS 	250000
+#define MAX_READ_LEN		1024*2
 #define MAX_NUM_READS		1024*1024
 
 #define NUM_STREAMS			8
