@@ -15,9 +15,9 @@
 using namespace std;
 
 #define BUF_SIZE 				8192
-#define EPSILON 				0.00001
-#define UPPER_BOUND_NUM_EDGES 	200000000
-#define INVALID_ID 				1000000000
+#define EPSILON 				1e-6
+#define UPPER_BOUND_NUM_EDGES 	2e8
+#define INVALID_ID 				1e9
 	
 struct DistPair
 {   
@@ -692,9 +692,14 @@ int main(int argc, char* argv[])
 	int numReads=0;
 
 	getOptions(argc, argv, inFileName, numReads, numFiles, endLevel, outFileName);
-	if (endLevel < 0 || endLevel > 1) 		
-		endLevel = 1/log2((double)numReads);			
+	if (endLevel < 0.0 || endLevel > 1.0) {
+		if (numReads > 500)
+			endLevel = min(1/log2((double)numReads),1.0);	
+		else
+			endLevel = min(1/log10((double)numReads),1.0);	
+	}
 
+	cout << endLevel << endl;
 	getDistNameList(inFileName, pairNameVector, distNameVector, numFiles);
 
 	FILE * outFile = NULL;
@@ -702,7 +707,7 @@ int main(int argc, char* argv[])
 	
 	if (outFileName.length() > 0) {		
 		string outFileName1 = outFileName;
-		outFileName1.append("_matlab");	
+		outFileName1.append("_Index1");	
 		cout << outFileName << endl;
 		cout << outFileName1 << endl;
 		outFile = fopen(outFileName.c_str(), "w");		
@@ -900,7 +905,7 @@ int main(int argc, char* argv[])
 				}	
 				*/
 				endLevel = lambda;				
-				allLoaded = true;
+				//allLoaded = true;
 				cout << "new endLevel: " << endLevel << endl;
 			}							
 		}	

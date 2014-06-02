@@ -532,7 +532,7 @@ int main(int argc, char* argv[])
 	string mergeFileName;
 
 	mergeFileName=inFileName;
-	mergeFileName.append("_Merge");
+	mergeFileName.append("_Align_Merge");
 	mergeFile = fopen(mergeFileName.c_str(), "w");	
 	
 	if(pairNameVector.size()==0)

@@ -14,6 +14,5 @@ $PROFILER ./crispy-cuda/bin/genDist -i $UNIQUE_INPUT -b $B
 
 NUM_READS=`grep '>' $UNIQUE_INPUT | wc -l`
 NUM_FILES=`ls $UNIQUE_INPUT".ndist"* | wc -l`	
-$PROFILER ./crispy-cuda/bin/aveclust -i $UNIQUE_INPUT -n $NUM_READS -f $NUM_FILES
-#$PROFILER ./crispy-cuda/bin/hcluster -i $UNIQUE_INPUT -n $NUM_READS -f $NUM_FILES
-
+#$PROFILER ./crispy-cuda/bin/aveclust -i $UNIQUE_INPUT -n $NUM_READS -f $NUM_FILES
+$PROFILER ./crispy-cuda/bin/hcluster -i $UNIQUE_INPUT -n $NUM_READS -f $NUM_FILES

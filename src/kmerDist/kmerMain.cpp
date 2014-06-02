@@ -40,8 +40,12 @@ int main(int argc, char* argv[]) {
 		exit(-1);
 	}
 	
-	if (threshold < 0 || threshold > 1) 		
-		threshold = 2/log2((double)numReads);	
+	if (threshold < 0 || threshold > 1) {		
+		if (numReads > 500)
+			threshold = min(2/log2((double)numReads),1.0);	
+		else
+			threshold = min(2/log10((double)numReads),1.0);	
+	}
 		
 	arrayDim = (int)(4 * pow(8.0, floor(log10((double)numReads))-1));	 
 
