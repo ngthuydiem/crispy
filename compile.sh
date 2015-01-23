@@ -37,13 +37,6 @@ cp aveclust ../../bin
 make clean
 cd ../..
 
-cd src/hcluster
-make clean
-make
-cp hcluster ../../bin
-make clean
-cd ../..
-
 cd src/sparsecut
 make clean
 make
