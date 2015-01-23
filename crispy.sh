@@ -22,4 +22,7 @@ else
 	NUM_READS=`grep '>' $UNIQUE_INPUT | wc -l`
 	NUM_FILES=`ls $UNIQUE_INPUT".ndist"* | wc -l`	
 	./bin/aveclust -i $UNIQUE_INPUT -n $NUM_READS -f $NUM_FILES
+
+	R --no-save < crispy_changepoint.r --args $MERGE
+	./bin/sparsecut -i $UNIQUE_INPUT -n $NUM_READS -c "optimal_cutoff.txt" 
 fi
