@@ -357,7 +357,7 @@ int main(int argc, char* argv[])
 	int idX, idY;
 	float dist;		
 	string mergeFileName=inFileName;
-	mergeFileName.append("_Align_Merge");	
+	mergeFileName.append("_Merge");	
 	
 	FILE * mergeFile;
 	mergeFile = fopen(mergeFileName.c_str(), "r");
