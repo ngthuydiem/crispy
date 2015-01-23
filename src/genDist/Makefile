@@ -1,11 +1,9 @@
-MPI_DIR = /usr/lib/openmpi
-
 ARCH = sm_50	
 NVCC = nvcc
 CXX = $(NVCC)
 
-NVCCOPTIONS = -arch $(ARCH) --ptxas-options=-v --compiler-options=-Wall --compiler-options=-Wno-unused-result
-NVCCFLAGS = -O3 $(NVCCOPTIONS) -Xcompiler -fopenmp -maxrregcount 56 -lineinfo -DTHRUST_HOST_SYSTEM=THRUST_HOST_SYSTEM_OMP -DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_CUDA -DSET_AFFINITY #-DDEBUG
+NVCCOPTIONS = -arch $(ARCH) 
+NVCCFLAGS = -O3 $(NVCCOPTIONS) -Xcompiler -fopenmp -maxrregcount 56 -DTHRUST_HOST_SYSTEM=THRUST_HOST_SYSTEM_OMP -DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_CUDA -DSET_AFFINITY #-DDEBUG
 
 CXXFLAGS = $(NVCCFLAGS)
 NVCCLIBS = -lm -lgomp -lcudart 

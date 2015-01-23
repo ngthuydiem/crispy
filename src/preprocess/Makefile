@@ -1,4 +1,4 @@
-CXX = g++ -O3 -Wall -Wextra -Wno-unused-result
+CXX = g++ -O3
 
 EXEC = preprocess
 

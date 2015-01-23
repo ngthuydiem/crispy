@@ -1,24 +1,32 @@
+SM=$1
+if [ -z "$SM" ]; then
+	SM=50
+fi
+
+# remove existing executables
 rm -r bin
 mkdir bin
 
-cd src/preprocess
-make clean
-make
-cp preprocess ../../bin
-make clean
-cd ../..
-
+# compile CUDA codes
 cd src/kmerDist
 make clean
-make
+make ARCH=sm_$SM
 cp kmerDist ../../bin
 make clean
 cd ../..
 
 cd src/genDist
 make clean
-make
+make ARCH=sm_$SM
 cp genDist ../../bin
+make clean
+cd ../..
+
+# compile C++ codes
+cd src/preprocess
+make clean
+make
+cp preprocess ../../bin
 make clean
 cd ../..
 

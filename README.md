@@ -1,29 +1,18 @@
-CRiSPy
-========
+# CRiSPy
+Computing Species Richness in 16S rRNA Pyrosequencing Datasets
 
-Computing Species Richness in 16S rRNA Pyrosequencing Datasets —
-
+## Sample command
 Look how easy it is to use:
 
     import project
     # Get your stuff done
     project.do_stuff()
 
-Usage
---------
+## Require
 
-- Be awesome
-- Make things faster
-
-Compile
-------------
-
-Install $project by running:
-
-    install project
+## Compile
 
 
-License
--------
+## License
 
 The project is licensed under the GPL license.

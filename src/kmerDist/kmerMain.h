@@ -17,7 +17,6 @@
 #include <math.h>
 #include <omp.h>
 #include <string.h>
-#include <mpi.h>
 #include <sys/time.h>
 
 using namespace std;
@@ -67,12 +66,10 @@ int readFile(string inFileName, READ* &readArray, int &maxLen, int K);
 
 void help();
 
-void getCommandOptions(int argc, char* argv[], string &inFileName, float &threshold, bool &hasDistances, int &num_threads, bool &useGPU, bool &useMPI, int &K);
+void getCommandOptions(int argc, char* argv[], string &inFileName, float &threshold, bool &hasDistances, int &num_threads, bool &useGPU, int &K);
 
 void computeKmerDist_CPU(READ* &readArray, FILE* pairFile, FILE* distFile, bool hasDistances, int numReads, float threshold, int arrayDim, int K);
 
 void computeKmerDist_CUDA(READ* &readArray, FILE* pairFile, FILE* distFile, bool hasDistances, int numReads, int maxLen, float threshold, int arrayDim, int K);
-
-void computeKmerDist_MPI(READ* &readArray, FILE* pairFile, FILE * distFile, bool hasDistances, int numReads, int maxLen, float threshold, int arrayDim, int commRank, int commSize, int K);
 
 #endif

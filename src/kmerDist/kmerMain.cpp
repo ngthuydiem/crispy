@@ -18,14 +18,14 @@ int main(int argc, char* argv[]) {
 	READ *readArray = NULL;	
 
 	string inFileName, pairFileName, distFileName;
-	bool hasDistances = false, useGPU = true, useMPI = false;
+	bool hasDistances = false, useGPU = true;
 	float threshold = -1;	
 
 	int numThreads = 1, numReads, maxLen = 0, arrayDim, K = 6;
 	// open the output file
 	FILE* pairFile = NULL, *distFile = NULL;
 		
-	getCommandOptions(argc, argv, inFileName, threshold, hasDistances, numThreads, useGPU, useMPI, K);
+	getCommandOptions(argc, argv, inFileName, threshold, hasDistances, numThreads, useGPU, K);
 
 	pairFileName = inFileName;
 	pairFileName.append(".kpair");
@@ -60,81 +60,34 @@ int main(int argc, char* argv[]) {
 		readArray[i].formTuples(K);
 		readArray[i].sortTuples();
 	}
-		
-	if (useGPU && useMPI) {		
-
-		// Initialize MPI state
-		MPI_Init(NULL, NULL);
-		    		 
-		// Get our MPI node number and node count
-    	int commSize, commRank, len;
-		char name[BUF_SIZE];
-	    MPI_Comm_size(MPI_COMM_WORLD, &commSize);
-	    MPI_Comm_rank(MPI_COMM_WORLD, &commRank);
-		MPI_Get_processor_name(name, &len);
+			 
+	printf("\n----------------------------------------------------------------------\n");
+	printf("                       COMPUTE KMER DISTANCES                           \n");
+	printf("File name: %s. K = %d\n\n", inFileName.c_str(), K);
+	printf("numReads: %d, maxLen: %d, threshold: %.2f\n  ", numReads, maxLen, threshold);
 			
-		char temp[5];
-		sprintf(temp,"_%d",commRank);
-		pairFileName.append(temp);
-		pairFile = fopen(pairFileName.c_str(), "wb");
-		if (hasDistances) {
-			distFileName.append(temp);
-			distFile = fopen(distFileName.c_str(), "wb");	
-		}
+	pairFile = fopen(pairFileName.c_str(), "wb");
+	if (hasDistances)
+		distFile = fopen(distFileName.c_str(), "wb");	
 
-		if (commRank == 0)
-		{
-			printf("\n----------------------------------------------------------------------\n");
-			printf("                       COMPUTE KMER DISTANCES                           \n");
-			printf("File name: %s. K = %d\n\n", inFileName.c_str(), K);
-			printf("numReads: %d, maxLen: %d, threshold: %.2f\n  ", numReads, maxLen, threshold);
-			printf("USE MPI. numCPUs: %d\n\n", commSize);
-		}		
-		computeKmerDist_MPI(readArray, pairFile, distFile, hasDistances, numReads, maxLen, threshold, arrayDim, commRank, commSize, K);			
-		fclose(pairFile);
-		if (hasDistances)
-			fclose(distFile);
-
-		if (commRank == 0) {
-			gettimeofday(&endTime, NULL);	
-			long elapsedTime = (endTime.tv_sec - startTime.tv_sec) * 1000u + (endTime.tv_usec - startTime.tv_usec) / 1.e3 + 0.5;
-	
-			printf("Time taken: %.3f s\n", elapsedTime/1.e3);
-			printf("\n----------------------------------------------------------------------\n");
-		}
-	
-		MPI_Finalize();
-
-	}	
-	else { 
-		printf("\n----------------------------------------------------------------------\n");
-		printf("                       COMPUTE KMER DISTANCES                           \n");
-		printf("File name: %s. K = %d\n\n", inFileName.c_str(), K);
-		printf("numReads: %d, maxLen: %d, threshold: %.2f\n  ", numReads, maxLen, threshold);
-			
-		pairFile = fopen(pairFileName.c_str(), "wb");
-		if (hasDistances)
-			distFile = fopen(distFileName.c_str(), "wb");	
-
-		if (useGPU) {
-			printf("USE GPU. numStreams: %d\n", NUM_STREAMS);
-			computeKmerDist_CUDA(readArray, pairFile, distFile, hasDistances, numReads, maxLen, threshold, arrayDim, K);					
-		}
-		else {
-			printf("USE CPU. numThreads: %d\n", numThreads);
-			computeKmerDist_CPU(readArray, pairFile, distFile, hasDistances, numReads, threshold, arrayDim, K);
-		}
+	if (useGPU) {
+		printf("USE GPU. numStreams: %d\n", NUM_STREAMS);
+		computeKmerDist_CUDA(readArray, pairFile, distFile, hasDistances, numReads, maxLen, threshold, arrayDim, K);					
+	}
+	else {
+		printf("USE CPU. numThreads: %d\n", numThreads);
+		computeKmerDist_CPU(readArray, pairFile, distFile, hasDistances, numReads, threshold, arrayDim, K);
+	}
 		
-		fclose(pairFile);
-		if (hasDistances)
-			fclose(distFile);
+	fclose(pairFile);
+	if (hasDistances)
+		fclose(distFile);
 	
-		gettimeofday(&endTime, NULL);	
-		long elapsedTime = (endTime.tv_sec - startTime.tv_sec) * 1000u + (endTime.tv_usec - startTime.tv_usec) / 1.e3 + 0.5;
+	gettimeofday(&endTime, NULL);	
+	long elapsedTime = (endTime.tv_sec - startTime.tv_sec) * 1000u + (endTime.tv_usec - startTime.tv_usec) / 1.e3 + 0.5;
 	
-		printf("Time taken: %.3f s\n", elapsedTime/1.e3);
-		printf("\n----------------------------------------------------------------------\n");
-	}		
+	printf("Time taken: %.3f s\n", elapsedTime/1.e3);
+	printf("\n----------------------------------------------------------------------\n");	
 	
 	return 0;
 }
@@ -273,7 +226,7 @@ void help()
 	cout << "[-h]		    : help" << endl;
 }
 
-void getCommandOptions(int argc, char* argv[], string &inFileName, float &threshold, bool &hasDistances, int &numThreads, bool &useGPU, bool &useMPI, int &K)
+void getCommandOptions(int argc, char* argv[], string &inFileName, float &threshold, bool &hasDistances, int &numThreads, bool &useGPU, int &K)
 {
 
 	int numProcs = omp_get_num_procs();					
@@ -311,8 +264,6 @@ void getCommandOptions(int argc, char* argv[], string &inFileName, float &thresh
 			hasDistances = true;
 		if (strcmp("-c", argv[i]) == 0)
 			useGPU = false;
-		if (strcmp("-m", argv[i]) == 0)
-			useMPI = true;
 		if (strcmp("-h", argv[i]) == 0) {
 			help();
 			exit(-1);
