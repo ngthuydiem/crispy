@@ -23,6 +23,8 @@ else
 	NUM_FILES=`ls $UNIQUE_INPUT".ndist"* | wc -l`	
 	./bin/aveclust -i $UNIQUE_INPUT -n $NUM_READS -f $NUM_FILES
 
-	R --no-save < crispy_changepoint.r --args $MERGE
+	MERGE=$UNIQUE_INPUT"_Merge"
+	rm -f optimal_cutoff.txt
+	R --no-save < crispy_changepoint.r --args $MERGE >>/dev/null 2>>/dev/null
 	./bin/sparsecut -i $UNIQUE_INPUT -n $NUM_READS -c "optimal_cutoff.txt" 
 fi

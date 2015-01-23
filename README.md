@@ -7,7 +7,7 @@ Computing Species Richness in 16S rRNA Pyrosequencing Datasets
 ./crispy.sh <input_fasta_file> [k_value] [band_value]
 ```
 - `k_value`: parameter for kmer distance computation. By default: 6
-_ `band_value`: parameter of banded global alignment for genetic distance computation. By default: 10 i.e. 1/10 banded alignment
+- `band_value`: parameter of banded global alignment for genetic distance computation. By default: 10 i.e. 1/10 banded alignment
 
 
 ## Require
